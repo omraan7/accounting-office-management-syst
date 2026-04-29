@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-almarai), ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    @apply font-sans bg-gray-50 text-gray-900;
+    direction: rtl;
+  }
+}
+
+@layer utilities {
+  .rtl {
+    direction: rtl;
+  }
+}
+
+/* Professional Print Styles */
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background-color: white !important;
+    -webkit-print-color-adjust: exact;
+  }
+  #certificate-print-area {
+    width: 210mm;
+    height: 297mm;
+    padding: 20mm;
+    margin: 0;
+    border: none !important;
+    box-shadow: none !important;
+  }
+}

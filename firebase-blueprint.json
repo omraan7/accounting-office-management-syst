@@ -1,0 +1,93 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "App user (Admin or Accountant)",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "format": "email" },
+        "fullName": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "accountant"] },
+        "status": { "type": "string", "enum": ["pending", "approved"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "fullName", "role", "status"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "Task assigned by Admin to Accountant",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "dueDate": { "type": "string" },
+        "assigneeId": { "type": "string" },
+        "assigneeName": { "type": "string" },
+        "status": { "type": "string", "enum": ["not_seen", "seen", "accepted", "completed", "not_completed"] },
+        "attachments": { "type": "array", "items": { "type": "string" } },
+        "report": {
+          "type": "object",
+          "properties": {
+            "content": { "type": "string" },
+            "reason": { "type": "string" },
+            "proofImages": { "type": "array", "items": { "type": "string" } },
+            "submittedAt": { "type": "string", "format": "date-time" }
+          }
+        },
+        "logs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "status": { "type": "string" },
+              "timestamp": { "type": "string", "format": "date-time" },
+              "note": { "type": "string" }
+            }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "assigneeId", "status", "createdAt"]
+    },
+    "Report": {
+      "title": "Daily Report",
+      "description": "Daily activity report from accountant",
+      "type": "object",
+      "properties": {
+        "accountantName": { "type": "string" },
+        "certCount": { "type": "string" },
+        "notes": { "type": "string" },
+        "date": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Settings": {
+      "title": "App Settings",
+      "description": "Global app configuration and landing page content",
+      "type": "object",
+      "properties": {
+        "landing": { "type": "object" },
+        "services": { "type": "array" },
+        "certificateTemplate": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "User profiles and roles"
+    },
+    "tasks/{taskId}": {
+      "schema": "Task",
+      "description": "Tasks tracking"
+    },
+    "reports/{reportId}": {
+      "schema": "Report",
+      "description": "Accountant daily reports"
+    },
+    "config/app": {
+      "schema": "Settings",
+      "description": "Global application configuration"
+    }
+  }
+}

@@ -1,0 +1,84 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 0.1 Primitives
+    function isSignedIn() { return request.auth != null; }
+    function isEmailVerified() { return request.auth.token.email_verified == true; }
+    function isAdmin() { 
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    function isOwner(userId) { return request.auth.uid == userId; }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    
+    // 1. Users
+    match /users/{userId} {
+      function isValidUser(data) {
+        return data.email is string && data.email.size() < 128 &&
+               data.fullName is string && data.fullName.size() < 128 &&
+               data.role in ['admin', 'accountant'] &&
+               data.status in ['pending', 'approved'];
+      }
+
+      allow get: if isSignedIn() && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin();
+      
+      allow create: if isSignedIn() && isOwner(userId) && 
+                      isValidUser(incoming()) && 
+                      incoming().status == 'pending' && 
+                      incoming().role == 'accountant' &&
+                      incoming().email == request.auth.token.email;
+                      
+      allow update: if isSignedIn() && (
+        (isAdmin() && isValidUser(incoming()) && incoming().diff(existing()).affectedKeys().hasAny(['status', 'role'])) ||
+        (isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['fullName']) && isValidUser(incoming()))
+      );
+      
+      allow delete: if isAdmin();
+    }
+
+    // 2. Tasks
+    match /tasks/{taskId} {
+      function isValidTask(data) {
+        return data.title is string && data.title.size() <= 200 &&
+               data.assigneeId is string &&
+               data.status in ['not_seen', 'seen', 'accepted', 'completed', 'not_completed'];
+      }
+
+      allow read: if isSignedIn() && (isAdmin() || existing().assigneeId == request.auth.uid);
+      
+      allow create: if isAdmin() && isValidTask(incoming()) && 
+                      exists(/databases/$(database)/documents/users/$(incoming().assigneeId));
+                      
+      allow update: if isSignedIn() && (
+        (isAdmin() && isValidTask(incoming())) ||
+        (existing().assigneeId == request.auth.uid && (
+           // Only allow specific transitions and status-only/report-only updates
+           (incoming().status == 'seen' && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'logs'])) ||
+           (incoming().status == 'accepted' && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'logs'])) ||
+           (incoming().status in ['completed', 'not_completed'] && incoming().diff(existing()).affectedKeys().hasAny(['status', 'report', 'logs']))
+        ))
+      );
+      
+      allow delete: if isAdmin();
+    }
+
+    // 3. Reports
+    match /reports/{reportId} {
+      allow read: if isAdmin();
+      allow create: if isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'approved';
+    }
+
+    // 4. Config
+    match /config/app {
+      allow read: if true; // Public site content
+      allow write: if isAdmin();
+    }
+  }
+}
